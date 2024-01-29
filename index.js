@@ -1,7 +1,15 @@
 require("dotenv").config();
 const { MongoClient, ServerApiVersion } = require("mongodb");
-const { APPLICATION_ID, TOKEN, PUBLIC_KEY, GUILD_ID, CHANNEL_ID, MONGODB_URI, MONGODB_DBNAME, MONGODB_COLLECTIONNAME } =
-  process.env;
+const {
+  APPLICATION_ID,
+  TOKEN,
+  PUBLIC_KEY,
+  GUILD_ID,
+  CHANNEL_ID,
+  MONGODB_URI,
+  MONGODB_DBNAME,
+  MONGODB_COLLECTIONNAME,
+} = process.env;
 
 const client = new MongoClient(MONGODB_URI, {
   serverApi: {
@@ -36,6 +44,16 @@ const discord_api = axios.create({
     Authorization: `Bot ${TOKEN}`,
   },
 });
+
+function capitalizeFirstLetter(sentence) {
+  let words = sentence.split(" ");
+  for (let i = 0; i < words.length; i++) {
+    let firstLetter = words[i].charAt(0).toUpperCase();
+    words[i] = firstLetter + words[i].slice(1);
+  }
+  let result = words.join(" ");
+  return result;
+}
 
 function convertDate(array) {
   let convertedDate = [];
@@ -85,18 +103,26 @@ app.post("/update", async (req, res) => {
     time: [],
   };
 
+  const prevData = {
+    task: [],
+    deadline: [],
+    time: [],
+  };
+
   const cursor = collection.find({ task: { $exists: true } });
 
   await cursor.forEach((data) => {
     allData.task.push(data.task);
     allData.deadline.push(data.deadline);
     allData.time.push(data.time);
+
+    prevData.task.push(data.task);
+    prevData.deadline.push(data.deadline);
+    prevData.time.push(data.time);
   });
 
-  const prevData = allData;
-
   for (let i = 0; i < allData.task.length; i++) {
-    if (allData.deadline[i] < getDate() || allData.deadline[i] == getDate()) {
+    if (allData.deadline[i] < getDate()) {
       allData.task.splice(i, 1);
       allData.deadline.splice(i, 1);
       allData.time.splice(i, 1);
@@ -116,19 +142,22 @@ app.post("/update", async (req, res) => {
     await collection.insertMany(result);
   }
 
-  if (prevData.task.length != allData.task.length) {
-    const currentDate = new Date().toLocaleString("id-ID", {
-      timeZone: "Asia/Jakarta",
-      hour12: false,
+  if (prevData.task.length !== allData.task.length) {
+    const currentDate = new Date();
+
+    const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
+      weekday: "long", // Nama hari dalam bahasa Indonesia
       hour: "numeric",
       minute: "numeric",
     });
+
+    const formattedDate = dateTimeFormatter.format(currentDate);
 
     await collection.updateOne(
       { updatedAt: { $exists: true } },
       {
         $set: {
-          updatedAt: `${currentDate}`,
+          updatedAt: `${formattedDate}`,
           updatedBy: `Admin`,
         },
       }
@@ -180,7 +209,7 @@ app.post("/reminder", async (req, res) => {
         color: 0x0084ff,
         fields: fields,
         footer: {
-          text: `terakhir diubah oleh ${allData.updatedBy} jam ${allData.updatedAt}`,
+          text: `terakhir diubah oleh ${allData.updatedBy} pada ${allData.updatedAt}`,
         },
       },
     ],
@@ -200,7 +229,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
           embeds: [
             {
               type: "rich",
-              title: `Halo ${interaction.member.user.username}! >_<`,
+              title: `Halo ${interaction.member.nick}!`,
               description: `Ini adalah pesan balasan dari bot.`,
               color: 0x0084ff,
               fields: [
@@ -214,7 +243,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
                 },
                 {
                   name: `Notes`,
-                  value: `Jika bot \"did not respond\", sebenarnya itu berhasil di sisi server.\nPastikan bahwa perintah yang dijalankan telah berhasil\n\nLink Repository : https://github.com/dwipayogi/discord-bot`,
+                  value: `Jika bot \"did not respond\", sebenarnya itu berhasil di sisi server.\nPastikan bahwa perintah yang dijalankan telah berhasil\n\nLink Repository : https://github.com/dwipayogi/my-discord-bot`,
                 },
               ],
               footer: {
@@ -243,7 +272,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
         (option) => option.name === "waktu"
       )?.value;
 
-      data.task = task2;
+      data.task = capitalizeFirstLetter(task2);
       data.deadline = deadline2;
       data.time = time2;
 
@@ -265,19 +294,22 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
 
       await collection.insertOne(data);
 
-      const currentDate = new Date().toLocaleString("id-ID", {
-        timeZone: "Asia/Jakarta",
-        hour12: false,
+      const currentDate = new Date();
+
+      const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
+        weekday: "long",
         hour: "numeric",
         minute: "numeric",
       });
 
+      const formattedDate = dateTimeFormatter.format(currentDate);
+
       await collection.updateOne(
-        { updatedAt: { $exists: true } }, // Kriteria pencarian (dalam hal ini kosong untuk memilih satu dokumen)
+        { updatedAt: { $exists: true } },
         {
           $set: {
-            updatedAt: `${currentDate}`,
-            updatedBy: `${interaction.member.user.username}`,
+            updatedAt: `${formattedDate}`,
+            updatedBy: `${interaction.member.nick}`,
           },
         }
       );
@@ -319,7 +351,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
                 description: `Tidak ada tugas yang harus dikerjakan`,
                 color: 0x00ff2a,
                 footer: {
-                  text: `terakhir diubah oleh ${allData.updatedBy} jam ${allData.updatedAt}`,
+                  text: `terakhir diubah oleh ${allData.updatedBy} pada ${allData.updatedAt}`,
                 },
               },
             ],
@@ -347,7 +379,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
               color: 0x0084ff,
               fields: fields,
               footer: {
-                text: `terakhir diubah oleh ${allData.updatedBy} jam ${allData.updatedAt}`,
+                text: `terakhir diubah oleh ${allData.updatedBy} pada ${allData.updatedAt}`,
               },
             },
           ],
@@ -396,19 +428,22 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
       },
     });
 
-    const currentDate = new Date().toLocaleString("id-ID", {
-      timeZone: "Asia/Jakarta",
-      hour12: false,
+    const currentDate = new Date();
+
+    const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
       hour: "numeric",
       minute: "numeric",
     });
 
+    const formattedDate = dateTimeFormatter.format(currentDate);
+
     await collection.updateOne(
-      { updatedAt: { $exists: true } }, // Kriteria pencarian (dalam hal ini kosong untuk memilih satu dokumen)
+      { updatedAt: { $exists: true } },
       {
         $set: {
-          updatedAt: `${currentDate}`,
-          updatedBy: `${interaction.member.user.username}`,
+          updatedAt: `${formattedDate}`,
+          updatedBy: `${interaction.member.nick}`,
         },
       }
     );
@@ -421,7 +456,7 @@ app.get("/register_commands", async (req, res) => {
   let slash_commands = [
     {
       name: "halo",
-      description: "nyapa waifumu",
+      description: "info bot",
       options: [],
     },
     {
