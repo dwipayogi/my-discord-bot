@@ -221,7 +221,7 @@ app.post("/reminder", async (req, res) => {
 
 app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
   const interaction = req.body;
-  const name = interaction.member.nick;
+  let name = interaction.member.nick;
   if(name == null) {
     name = interaction.member.user.username;
   }
