@@ -146,7 +146,8 @@ app.post("/update", async (req, res) => {
     const currentDate = new Date();
 
     const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
-      weekday: "long", // Nama hari dalam bahasa Indonesia
+      timeZone: "Asia/Jakarta",
+      weekday: "long",
       hour: "numeric",
       minute: "numeric",
     });
@@ -220,6 +221,10 @@ app.post("/reminder", async (req, res) => {
 
 app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
   const interaction = req.body;
+  const name = interaction.member.nick;
+  if(name == null) {
+    name = interaction.member.user.username;
+  }
 
   if (interaction.type === InteractionType.APPLICATION_COMMAND) {
     if (interaction.data.name == "halo") {
@@ -229,7 +234,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
           embeds: [
             {
               type: "rich",
-              title: `Halo ${interaction.member.nick}!`,
+              title: `Halo ${name}!`,
               description: `Ini adalah pesan balasan dari bot.`,
               color: 0x0084ff,
               fields: [
@@ -297,6 +302,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
       const currentDate = new Date();
 
       const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
         weekday: "long",
         hour: "numeric",
         minute: "numeric",
@@ -309,7 +315,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
         {
           $set: {
             updatedAt: `${formattedDate}`,
-            updatedBy: `${interaction.member.nick}`,
+            updatedBy: `${name}`,
           },
         }
       );
@@ -431,6 +437,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
     const currentDate = new Date();
 
     const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
       weekday: "long",
       hour: "numeric",
       minute: "numeric",
@@ -443,7 +450,7 @@ app.post("/interactions", verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
       {
         $set: {
           updatedAt: `${formattedDate}`,
-          updatedBy: `${interaction.member.nick}`,
+          updatedBy: `${name}`,
         },
       }
     );
