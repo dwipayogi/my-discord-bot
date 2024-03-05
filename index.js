@@ -200,6 +200,10 @@ app.post("/reminder", async (req, res) => {
     };
   });
 
+  if (allData.task.length == 0) {
+    return res.send(`tidak ada tugas yang harus dikerjakan`);
+  }
+  
   await discord_api.post(`/channels/${CHANNEL_ID}/messages`, {
     content: "@everyone",
     embeds: [
